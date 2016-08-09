@@ -40,9 +40,18 @@
 - (void)setResults:(NSMutableDictionary*)dictionary withTask:(NSURLSessionTask*)task {
     if (task.response != nil) {
         NSHTTPURLResponse *response = (NSHTTPURLResponse *)task.response;
+        NSLog(@"Status Code: %@", [NSNumber numberWithInt:response.statusCode]);
+        
         [dictionary setObject:[NSNumber numberWithInt:response.statusCode] forKey:@"status"];
         [dictionary setObject:response.allHeaderFields forKey:@"headers"];
     }
+    //<added by Anubhav
+    else{
+        //NSHTTPURLResponse *response = (NSHTTPURLResponse *)task.response;
+        [dictionary setObject:@"" forKey:@"status"];
+        [dictionary setObject:@"" forKey:@"headers"];
+    }
+    //</added by Anubhav
 }
 
 - (void)enableSSLPinning:(CDVInvokedUrlCommand*)command {
@@ -78,6 +87,7 @@
 }
 
 - (void)post:(CDVInvokedUrlCommand*)command {
+    
     AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
     manager.securityPolicy = securityPolicy;
     NSString *url = [command.arguments objectAtIndex:0];
@@ -88,47 +98,135 @@
     CordovaHttpPlugin* __weak weakSelf = self;
     manager.responseSerializer = [TextResponseSerializer serializer];
     [manager POST:url parameters:parameters progress:nil success:^(NSURLSessionTask *task, id responseObject) {
+        NSLog(@"\n\n\npost PluginResult: %@",responseObject);
         NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
         [self setResults: dictionary withTask: task];
         [dictionary setObject:responseObject forKey:@"data"];
-        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dictionary];
-        [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        //<added by Anubhav
+        if(responseObject==nil || [responseObject isEqualToString:@""]){
+            NSString *strError=[self getEmptyResltValue];
+            NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+            [self setResults: dictionary withTask: task];
+            [dictionary setObject:strError forKey:@"error"];
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        else{
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        //        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dictionary];
+        //        [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        
+        //</added by Anubhav
+        
     } failure:^(NSURLSessionTask *task, NSError *error) {
-        NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
-        [self setResults: dictionary withTask: task];
-        [dictionary setObject:[error localizedDescription] forKey:@"error"];
-        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
-        [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        //<added by Anubhav
+        if([error localizedDescription]==nil || [[error localizedDescription] isEqualToString:@""]){
+            NSString *strError=[self getEmptyResltValue];
+            NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+            [self setResults: dictionary withTask: task];
+            [dictionary setObject:strError forKey:@"error"];
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        else{
+            NSDictionary *dic=[error userInfo];
+            NSLog(@"%@",error.localizedFailureReason);
+            NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+            [self setResults: dictionary withTask: task];
+            [dictionary setObject:[error localizedDescription] forKey:@"error"];
+            if(error.code!=0){
+                [dictionary setObject:[NSNumber numberWithInteger:error.code] forKey:@"status"];
+            }
+            if(error.code==-999){
+                [dictionary setObject:[NSNumber numberWithInteger:-1202] forKey:@"status"];
+                [dictionary setObject:@"connection not secure" forKey:@"error"];
+                
+            }
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        //        NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+        //        [self setResults: dictionary withTask: task];
+        //        [dictionary setObject:[error localizedDescription] forKey:@"error"];
+        //        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
+        //        [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        //</added by anubhav
     }];
 }
 
 - (void)postJson:(CDVInvokedUrlCommand*)command {
+    
    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
    NSString *url = [command.arguments objectAtIndex:0];
+    NSLog(@"\n\n\npostJson URL:%@",url);
    NSData *parameters = [command.arguments objectAtIndex:1];
    NSDictionary *headers = [command.arguments objectAtIndex:2];
     
    [headers setValue:@"application/json" forKey:@"Content-Type"];
    [self setRequestHeaders: headers forManager:manager];
-   
+    
    CordovaHttpPlugin* __weak weakSelf = self;
    manager.responseSerializer = [TextResponseSerializer serializer];
     [manager POST:url parameters:parameters progress:nil success:^(NSURLSessionTask *task, id responseObject) {
+        NSLog(@"\n\n\npostJson PluginResult: %@",responseObject);
         NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
         [self setResults: dictionary withTask: task];
         [dictionary setObject:responseObject forKey:@"data"];
-        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dictionary];
-        [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        //<added by Anubhav
+        if(responseObject==nil || [responseObject isEqualToString:@""]){
+            NSString *strError=[self getEmptyResltValue];
+            NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+            [self setResults: dictionary withTask: task];
+            [dictionary setObject:strError forKey:@"error"];
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        else{
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+//        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dictionary];
+//        [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        
+        //</added by Anubhav
+        
     } failure:^(NSURLSessionTask *task, NSError *error) {
-        NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
-        [self setResults: dictionary withTask: task];
-        [dictionary setObject:[error localizedDescription] forKey:@"error"];
-        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
-        [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        //<added by Anubhav
+        if([error localizedDescription]==nil || [[error localizedDescription] isEqualToString:@""]){
+            NSString *strError=[self getEmptyResltValue];
+            NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+            [self setResults: dictionary withTask: task];
+            [dictionary setObject:strError forKey:@"error"];
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        else{
+            
+            NSDictionary *dic=[error userInfo];
+            NSLog(@"%@",dic);
+            NSLog(@"%@",error.localizedFailureReason);
+            NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+            [self setResults: dictionary withTask: task];
+            [dictionary setObject:[error localizedDescription] forKey:@"error"];
+            if(error.code!=0){
+                [dictionary setObject:[NSNumber numberWithInteger:error.code] forKey:@"status"];
+            }
+            if(error.code==-999){
+                [dictionary setObject:[NSNumber numberWithInteger:-1202] forKey:@"status"];
+                [dictionary setObject:@"connection not secure" forKey:@"error"];
+                
+            }
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        //</added by anubhav
     }];
 }
 
 - (void)get:(CDVInvokedUrlCommand*)command {
+    
     AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
     manager.securityPolicy = securityPolicy;
     NSString *url = [command.arguments objectAtIndex:0];
@@ -140,17 +238,57 @@
    
     manager.responseSerializer = [TextResponseSerializer serializer];
     [manager GET:url parameters:parameters progress:nil success:^(NSURLSessionTask *task, id responseObject) {
+        NSLog(@"\n\n\nget PluginResult: %@",responseObject);
         NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
         [self setResults: dictionary withTask: task];
         [dictionary setObject:responseObject forKey:@"data"];
-        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dictionary];
-        [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        //<added by Anubhav
+        if(responseObject==nil || [responseObject isEqualToString:@""]){
+            NSString *strError=[self getEmptyResltValue];
+            NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+            [self setResults: dictionary withTask: task];
+            [dictionary setObject:strError forKey:@"error"];
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        else{
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        //        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dictionary];
+        //        [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        
+        //</added by Anubhav
+        
     } failure:^(NSURLSessionTask *task, NSError *error) {
-        NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
-        [self setResults: dictionary withTask: task];
-        [dictionary setObject:[error localizedDescription] forKey:@"error"];
-        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
-        [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        //<added by Anubhav
+        if([error localizedDescription]==nil || [[error localizedDescription] isEqualToString:@""]){
+            NSString *strError=[self getEmptyResltValue];
+            NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+            [self setResults: dictionary withTask: task];
+            [dictionary setObject:strError forKey:@"error"];
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        else{
+            NSDictionary *dic=[error userInfo];
+            NSLog(@"%@",dic);
+            NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+            [self setResults: dictionary withTask: task];
+            [dictionary setObject:[error localizedDescription] forKey:@"error"];
+            if(error.code!=0){
+                [dictionary setObject:[NSNumber numberWithInteger:error.code] forKey:@"status"];
+            }
+            if(error.code==-999){
+                [dictionary setObject:[NSNumber numberWithInteger:-1202] forKey:@"status"];
+                [dictionary setObject:@"connection not secure" forKey:@"error"];
+                
+            }
+            CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
+            [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        }
+        
+        //</added by anubhav
     }];
 }
 
@@ -170,11 +308,13 @@
         [self setResults: dictionary withTask: task];
         // no 'body' for HEAD request, omitting 'data'
         CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dictionary];
+        NSLog(@"\n\n\nhead PluginResult: %@",pluginResult.message);
         [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     } failure:^(NSURLSessionTask *task, NSError *error) {
         NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
         [self setResults: dictionary withTask: task];
-        [dictionary setObject:[error localizedDescription] forKey:@"error"];
+        NSString* errResponse = [[NSString alloc] initWithData:(NSData *)error.userInfo[AFNetworkingOperationFailingURLResponseDataErrorKey] encoding:NSUTF8StringEncoding];
+        [dictionary setObject:errResponse forKey:@"error"];
         CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
         [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     }];
@@ -214,7 +354,8 @@
     } failure:^(NSURLSessionTask *task, NSError *error) {
         NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
         [self setResults: dictionary withTask: task];
-        [dictionary setObject:[error localizedDescription] forKey:@"error"];
+        NSString* errResponse = [[NSString alloc] initWithData:(NSData *)error.userInfo[AFNetworkingOperationFailingURLResponseDataErrorKey] encoding:NSUTF8StringEncoding];
+        [dictionary setObject:errResponse forKey:@"error"];
         CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
         [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     }];
@@ -296,10 +437,18 @@
     } failure:^(NSURLSessionTask *task, NSError *error) {
         NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
         [self setResults: dictionary withTask: task];
-        [dictionary setObject:[error localizedDescription] forKey:@"error"];
+        NSString* errResponse = [[NSString alloc] initWithData:(NSData *)error.userInfo[AFNetworkingOperationFailingURLResponseDataErrorKey] encoding:NSUTF8StringEncoding];
+        [dictionary setObject:errResponse forKey:@"error"];
         CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dictionary];
         [weakSelf.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     }];
 }
+//function added by Anubhav
+-(NSString*)getEmptyResltValue{
+    NSString *str=@"Connection failed";
+    return str;
+}
+
 
 @end
+
