@@ -17,7 +17,7 @@ import java.util.Map;
 import javax.net.ssl.SSLHandshakeException;
 
 import org.apache.cordova.CallbackContext;
-import org.apache.commons.io.FileUtils;
+import org.apache.cordova.file.FileUtils;
 
 import org.json.JSONException;
 import org.json.JSONObject;
